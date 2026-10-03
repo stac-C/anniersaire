@@ -499,7 +499,7 @@ function App() {
             <video ref={videoRef} src={`${import.meta.env.BASE_URL}media/A_InShot_20261001_060438370.mp4`} autoPlay muted={muted} playsInline preload="metadata" onPlay={() => { setPlaying(true); setAutoplayBlocked(false); setVideoFullscreen(true); }} onPause={() => setPlaying(false)} onEnded={handleVideoEnded} aria-label="Film souvenir d’anniversaire" />
             {autoplayBlocked && <button className="video-start" onClick={togglePlayback}><Play size={18} fill="currentColor" /> Lancer le film avec le son</button>}
             <Celebration active={celebrating} />
-            <div className="video-corner">NOS INSTANTS PRÉFÉRÉS <Heart size={13} fill="currentColor" /></div>
+            <div className="video-corner">INSTANTS PRÉFÉRÉS ZIAME MATHEO<Heart size={13} fill="currentColor" /></div>
             </div>
             <div className="film-controls">
               <button className="control-button" onClick={togglePlayback} aria-label={playing ? 'Mettre la vidéo en pause' : 'Lire la vidéo'}>{playing ? <Pause size={17} /> : <Play size={17} fill="currentColor" />}</button>
