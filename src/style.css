@@ -199,6 +199,7 @@ h2 { color: var(--blue-deep); font-size: clamp(44px, 5.4vw, 68px); line-height: 
   display: flex;
   justify-content: center;
   align-items: center;
+  transform: translateY(-1rem);
 }
 .prompt-card {
   width: min(90vw, 430px);
