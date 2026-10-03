@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { ArrowDown, ArrowLeft, ArrowRight, Heart, Pause, Play, Volume2, VolumeX, X } from 'lucide-react';
+import soundtrackUrl from '../videoplayback.weba?url';
 
 const photos = Array.from({ length: 11 }, (_, index) => ({
   src: `${import.meta.env.BASE_URL}media/photo_${index + 1}_2026-10-02_07-12-40.jpg`,
@@ -360,7 +361,7 @@ function App() {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
 
     if (!soundtrackRef.current) {
-      const audio = new Audio(`${import.meta.env.BASE_URL}videoplayback.weba`);
+      const audio = new Audio(soundtrackUrl);
       audio.loop = true;
       audio.volume = 0.8;
       soundtrackRef.current = audio;
