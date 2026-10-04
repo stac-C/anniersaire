@@ -190,15 +190,15 @@ h2 { color: var(--blue-deep); font-size: clamp(44px, 5.4vw, 68px); line-height: 
 .video-corner svg { color: #e5c66f; }
 .celebration-prompt {
   position: fixed;
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   inset: 0;
   z-index: 60;
   place-items: center;
   background: rgba(4, 10, 19, 0.66);
   backdrop-filter: blur(8px);
-  text-align: center;
-  display: flex;
-  justify-content: center;
-  align-items: center;
   transform: translateY(-1rem);
 }
 .prompt-card {

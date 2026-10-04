@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { ArrowDown, ArrowLeft, ArrowRight, Heart, Pause, Play, Volume2, VolumeX, X } from 'lucide-react';
-import soundtrackUrl from '../videoplayback.weba?url';
+import slideshowSoundtrackUrl from '../videoplayback.weba?url';
 
 const photos = Array.from({ length: 11 }, (_, index) => ({
   src: `${import.meta.env.BASE_URL}media/photo_${index + 1}_2026-10-02_07-12-40.jpg`,
@@ -169,14 +169,8 @@ function Celebration({ active }) {
   }, [active]);
 
   if (!active) return null;
-  return <div className="celebration" aria-live="polite"><canvas ref={canvasRef} /><div className="celebration-message"><span>1er OCTOBRE</span><strong>Une année de plus</strong><small>et bien plus de beaux souvenirs</small></div></div>;
+  return <div className="celebration" aria-live="polite"><canvas ref={canvasRef} /><div className="celebration-message"><span>💦ZIAME MATHEO💦</span><strong>+1e OCTOBRE</strong><small>et bien plus de beaux souvenirs</small></div></div>;
 }
-
-const moodTracks = [
-  [392, 440, 523.25, 659.25, 587.33, 523.25, 440, 392],
-  [329.63, 392, 440, 493.88, 440, 392, 329.63, 293.66],
-  [349.23, 440, 523.25, 587.33, 523.25, 440, 392, 349.23],
-];
 
 const slideshowMessages = {
   0: 'Mon petit cœur, tu es notre plus grand bonheur',
@@ -274,6 +268,9 @@ function App() {
   const [celebrating, setCelebrating] = useState(false);
   const [playing, setPlaying] = useState(true);
   const [muted, setMuted] = useState(false);
+  const [musicPlaying, setMusicPlaying] = useState(false);
+  const [musicNeedsGesture, setMusicNeedsGesture] = useState(false);
+  const [slideshowMusicError, setSlideshowMusicError] = useState(false);
   const [autoplayBlocked, setAutoplayBlocked] = useState(false);
   const [soundNeedsGesture, setSoundNeedsGesture] = useState(false);
   const [videoFullscreen, setVideoFullscreen] = useState(false);
@@ -281,9 +278,88 @@ function App() {
   const videoRef = useRef(null);
   const celebrationTimer = useRef(null);
   const slideshowTimer = useRef(null);
-  const audioContext = useRef(null);
   const soundtrackRef = useRef(null);
-  const trackIndexRef = useRef(0);
+  const slideshowSoundtrackRef = useRef(null);
+
+  useEffect(() => {
+    const audio = new Audio(slideshowSoundtrackUrl);
+    audio.loop = true;
+    audio.volume = 0.8;
+    slideshowSoundtrackRef.current = audio;
+
+    return () => {
+      audio.pause();
+      slideshowSoundtrackRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const audio = new Audio(`${import.meta.env.BASE_URL}media/videoplayback.m4a`);
+    audio.loop = true;
+    audio.volume = 0.8;
+    soundtrackRef.current = audio;
+
+    return () => {
+      audio.pause();
+      soundtrackRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const audio = soundtrackRef.current;
+    if (!audio) return;
+
+    if (playing || slideshow) {
+      audio.pause();
+      setMusicPlaying(false);
+      return;
+    }
+
+    audio.play().then(() => {
+      if (playing || slideshow || audio.paused) {
+        audio.pause();
+        setMusicPlaying(false);
+        return;
+      }
+      setMusicPlaying(true);
+      setMusicNeedsGesture(false);
+    }).catch(() => {
+      if (!playing && !slideshow) {
+        setMusicPlaying(false);
+        setMusicNeedsGesture(true);
+      }
+    });
+  }, [playing, slideshow]);
+
+  useEffect(() => {
+    const audio = soundtrackRef.current;
+    if (!musicNeedsGesture || playing || slideshow || !audio) return undefined;
+
+    const retryPlayback = (event) => {
+      if (event.target instanceof Element
+        && event.target.closest('[data-music-toggle], .film-section, .slideshow-toolbar, .lightbox')) return;
+      if (!audio.paused) return;
+
+      audio.play().then(() => {
+        if (playing || slideshow || audio.paused) {
+          audio.pause();
+          setMusicPlaying(false);
+          return;
+        }
+        setMusicPlaying(true);
+        setMusicNeedsGesture(false);
+      }).catch(() => {
+        if (!playing && !slideshow) setMusicNeedsGesture(true);
+      });
+    };
+
+    window.addEventListener('pointerdown', retryPlayback);
+    window.addEventListener('keydown', retryPlayback);
+    return () => {
+      window.removeEventListener('pointerdown', retryPlayback);
+      window.removeEventListener('keydown', retryPlayback);
+    };
+  }, [musicNeedsGesture, playing, slideshow]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -342,78 +418,70 @@ function App() {
     setSelectedPhoto((current) => (current + direction + photos.length) % photos.length);
   };
 
-  const stopSlideshow = () => {
-    window.clearInterval(slideshowTimer.current);
-    setSlideshow(false);
-    setSelectedPhoto(null);
-    if (soundtrackRef.current) {
-      soundtrackRef.current.pause();
-      soundtrackRef.current.currentTime = 0;
-      soundtrackRef.current = null;
+  const toggleMusic = async () => {
+    const audio = soundtrackRef.current;
+    if (!audio) return;
+    if (playing || slideshow) {
+      audio.pause();
+      setMusicPlaying(false);
+      return;
     }
-    if (audioContext.current) {
-      audioContext.current.close();
-      audioContext.current = null;
+    if (audio.paused) {
+      try {
+        await audio.play();
+        if (playing || slideshow || audio.paused) {
+          audio.pause();
+          setMusicPlaying(false);
+          return;
+        }
+        setMusicPlaying(true);
+        setMusicNeedsGesture(false);
+      } catch {
+        setMusicNeedsGesture(true);
+      }
+    } else {
+      audio.pause();
+      setMusicPlaying(false);
+      setMusicNeedsGesture(false);
     }
   };
 
+  const stopSlideshow = () => {
+    window.clearInterval(slideshowTimer.current);
+    if (slideshowSoundtrackRef.current) {
+      slideshowSoundtrackRef.current.pause();
+      slideshowSoundtrackRef.current.currentTime = 0;
+    }
+    setSlideshow(false);
+    setSelectedPhoto(null);
+  };
+
   const startSlideshow = async () => {
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-
-    if (!soundtrackRef.current) {
-      const audio = new Audio(soundtrackUrl);
-      audio.loop = true;
-      audio.volume = 0.8;
-      soundtrackRef.current = audio;
-    }
-
-    try {
-      await soundtrackRef.current.play();
-    } catch {
-      if (AudioContextClass) {
-        audioContext.current = new AudioContextClass();
-        await audioContext.current.resume();
-      }
-    }
-
-    trackIndexRef.current = Math.floor(Math.random() * moodTracks.length);
+    const video = videoRef.current;
+    if (video && !video.paused) video.pause();
+    setPlaying(false);
+    soundtrackRef.current?.pause();
+    setMusicPlaying(false);
     setSelectedPhoto(0);
     setSlideshow(true);
+    setSlideshowMusicError(false);
+    try {
+      const audio = slideshowSoundtrackRef.current;
+      if (!audio) throw new Error('Slideshow soundtrack is unavailable');
+      await audio.play();
+    } catch {
+      setSlideshowMusicError(true);
+    }
     setVideoFullscreen(false);
     setShowLaunchPrompt(false);
   };
 
   useEffect(() => {
     if (!slideshow) return undefined;
-    const melody = moodTracks[trackIndexRef.current] || moodTracks[0];
-    let beat = 0;
-    const playNote = () => {
-      const audio = audioContext.current;
-      if (!audio || audio.state !== 'running') return;
-      const start = audio.currentTime;
-      const frequency = melody[beat % melody.length];
-      [frequency / 2, frequency, frequency * 1.5].forEach((note, index) => {
-        const oscillator = audio.createOscillator();
-        const gain = audio.createGain();
-        oscillator.type = index === 0 ? 'sine' : 'triangle';
-        oscillator.frequency.value = note;
-        gain.gain.setValueAtTime(0.0001, start);
-        gain.gain.exponentialRampToValueAtTime(index === 1 ? 0.018 : 0.008, start + 0.08);
-        gain.gain.exponentialRampToValueAtTime(0.0001, start + 1.15);
-        oscillator.connect(gain);
-        gain.connect(audio.destination);
-        oscillator.start(start);
-        oscillator.stop(start + 1.2);
-      });
-      beat += 1;
-    };
-    playNote();
-    const melodyTimer = window.setInterval(playNote, 650);
     slideshowTimer.current = window.setInterval(() => {
       setSelectedPhoto((current) => (current + 1) % photos.length);
     }, 3200);
     return () => {
-      window.clearInterval(melodyTimer);
       window.clearInterval(slideshowTimer.current);
     };
   }, [slideshow]);
@@ -423,7 +491,7 @@ function App() {
     window.clearInterval(slideshowTimer.current);
     soundtrackRef.current?.pause();
     soundtrackRef.current = null;
-    audioContext.current?.close();
+    slideshowSoundtrackRef.current?.pause();
   }, []);
 
   const replayVideo = async () => {
@@ -449,6 +517,7 @@ function App() {
   const handleVideoEnded = () => {
     setCelebrating(true);
     setVideoFullscreen(true);
+    setPlaying(false);
     celebrationTimer.current = window.setTimeout(() => {
       setCelebrating(false);
       setShowLaunchPrompt(true);
@@ -459,6 +528,13 @@ function App() {
         video.currentTime = 0;
       }
     }, 10000);
+  };
+
+  const handleVideoPlay = () => {
+    slideshowSoundtrackRef.current?.pause();
+    setPlaying(true);
+    setAutoplayBlocked(false);
+    setVideoFullscreen(true);
   };
 
   useEffect(() => {
@@ -496,7 +572,7 @@ function App() {
           <div className="film-copy"><p className="eyebrow"><span /> Comme si on y était</p><h2>Les images<br /><em>prennent vie.</em></h2><p>Un petit film pour retrouver l’énergie, les regards et tous ces instants qui passent trop vite.</p></div>
           
             <div className={`video-shell${celebrating ? ' is-celebrating' : ''}${videoFullscreen ? ' is-fullscreen' : ''}`}>
-            <video ref={videoRef} src={`${import.meta.env.BASE_URL}media/A_InShot_20261001_060438370.mp4`} autoPlay muted={muted} playsInline preload="metadata" onPlay={() => { setPlaying(true); setAutoplayBlocked(false); setVideoFullscreen(true); }} onPause={() => setPlaying(false)} onEnded={handleVideoEnded} aria-label="Film souvenir d’anniversaire" />
+            <video ref={videoRef} src={`${import.meta.env.BASE_URL}media/A_InShot_20261001_060438370.mp4`} autoPlay muted={muted} playsInline preload="metadata" onPlay={handleVideoPlay} onPause={() => setPlaying(false)} onEnded={handleVideoEnded} aria-label="Film souvenir d’anniversaire" />
             {autoplayBlocked && <button className="video-start" onClick={togglePlayback}><Play size={18} fill="currentColor" /> Lancer le film avec le son</button>}
             <Celebration active={celebrating} />
             <div className="video-corner">INSTANTS PRÉFÉRÉS ZIAME MATHEO<Heart size={13} fill="currentColor" /></div>
@@ -504,7 +580,8 @@ function App() {
             <div className="film-controls">
               <button className="control-button" onClick={togglePlayback} aria-label={playing ? 'Mettre la vidéo en pause' : 'Lire la vidéo'}>{playing ? <Pause size={17} /> : <Play size={17} fill="currentColor" />}</button>
               <button className="control-button" onClick={toggleSound} aria-label={muted ? 'Activer le son' : 'Couper le son'}>{muted ? <VolumeX size={17} /> : <Volume2 size={17} />}</button>
-              <span className="autoplay-label"><span className={playing ? 'live-dot' : 'live-dot is-paused'} /> {autoplayBlocked ? 'Touchez pour lancer le film' : soundNeedsGesture ? 'Touchez pour réactiver le son' : 'Lecture automatique avec son'}</span>
+              <button className="control-button" data-music-toggle onClick={toggleMusic} aria-label={musicPlaying ? 'Mettre la musique en pause' : 'Lancer la musique'}>{musicPlaying ? <Volume2 size={17} /> : <VolumeX size={17} />}</button>
+              <span className="autoplay-label"><span className={musicPlaying ? 'live-dot' : 'live-dot is-paused'} /> {musicNeedsGesture ? 'Touchez pour lancer la musique' : musicPlaying ? 'Musique en lecture' : autoplayBlocked ? 'Touchez pour lancer le film' : soundNeedsGesture ? 'Touchez pour réactiver le son' : 'Lecture automatique avec son'}</span>
             </div>
         </div>
       </section>
@@ -536,7 +613,7 @@ function App() {
 
       <section className="memories section-wrap" id="souvenirs">
         <div className="slideshow-toolbar">
-          <p>{slideshow ? 'Un petit air original accompagne les souvenirs.' : 'Revoir les photos en musique.'}</p>
+          <p role={slideshowMusicError ? 'alert' : undefined}>{slideshowMusicError ? 'La musique du diaporama n’a pas pu démarrer.' : slideshow ? 'Un petit air original accompagne les souvenirs.' : 'Revoir les photos en musique.'}</p>
           <button className="slideshow-button" onClick={slideshow ? stopSlideshow : startSlideshow}>
             {slideshow ? <Pause size={16} /> : <Play size={16} fill="currentColor" />}
             {slideshow ? 'Arrêter le diaporama' : 'Lancer le diaporama'}
