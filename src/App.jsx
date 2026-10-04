@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { ArrowDown, ArrowLeft, ArrowRight, Heart, Pause, Play, Volume2, VolumeX, X } from 'lucide-react';
 import slideshowSoundtrackUrl from '../videoplayback.weba?url';
 
+const ambientSoundtrackFiles = ['videoplayback.m4a', 'together.m4a'];
+
 const photos = Array.from({ length: 11 }, (_, index) => ({
   src: `${import.meta.env.BASE_URL}media/photo_${index + 1}_2026-10-02_07-12-40.jpg`,
   alt: [
@@ -315,6 +317,10 @@ function App() {
       return;
     }
 
+    const track = ambientSoundtrackFiles[Math.floor(Math.random() * ambientSoundtrackFiles.length)];
+    audio.src = `${import.meta.env.BASE_URL}media/${track}`;
+    audio.load();
+    setMusicNeedsGesture(false);
     audio.play().then(() => {
       if (playing || slideshow || audio.paused) {
         audio.pause();
